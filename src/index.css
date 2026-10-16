@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply font-sans;
+  }
+
+  body {
+    @apply bg-white text-base leading-relaxed text-neutral-600 antialiased;
+    margin: 0;
+  }
+}
