@@ -1,3 +1,11 @@
+function formatPhone(customer) {
+  const dialCode = String(customer.dialCode ?? '')
+  const prefix = `+${dialCode}`
+  return dialCode && customer.phone.startsWith(prefix)
+    ? `${prefix} ${customer.phone.slice(prefix.length)}`
+    : customer.phone
+}
+
 export function buildInvoiceMessage(items, storeName, customer) {
   const lines = items.map((item, index) => {
     const lineTotal = item.price * item.quantity
@@ -13,7 +21,7 @@ export function buildInvoiceMessage(items, storeName, customer) {
     ? [
         'بيانات العميل:',
         `الاسم: ${customer.name}`,
-        `رقم الهاتف: ${customer.phone}`,
+        `رقم الهاتف: ${formatPhone(customer)}`,
         `العنوان: ${customer.address}`,
         '',
       ]
