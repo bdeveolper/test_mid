@@ -42,7 +42,14 @@ Phase-by-phase checklist for **Scrub Store**. Check off items as they are comple
 - [x] Database tables and RLS (written, not yet run).
 - [x] Storage bucket for images (written, not yet run).
 - [x] Replace mock service with Supabase-backed product reads, writes, and image upload (requires schema deployment and environment configuration).
-- [ ] Admin auth.
+- [x] Admin authentication with Supabase Auth and a configurable secret route.
+- [x] Admin orders screen for pending, completed, returned, and cancelled orders.
+- [x] Save customer orders to Supabase before opening the WhatsApp invoice.
+- [x] Return to the admin products list with a success notice after saving a product.
+- [x] Show return and cancellation item outcomes in the admin orders history.
+- [x] Keep partially returned orders in the completed tab until all quantities are returned.
+- [x] Classify returned orders by remaining quantities and validate return submissions.
+- [x] Keep cart items synchronized with current product prices, stock, and availability.
 - [ ] Real saving of products, variants, and images.
 
 ## Phase 6: Polish and Deploy

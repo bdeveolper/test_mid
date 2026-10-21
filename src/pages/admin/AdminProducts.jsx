@@ -1,15 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ProductFilters from '../../components/admin/ProductFilters'
+import { useAuth } from '../../context/AuthContext'
 import { getCategoryLabel } from '../../lib/categories'
 import { deleteProduct, getAdminProducts } from '../../services/productService'
 
 function AdminProducts() {
+  const { adminHomePath } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [successMessage] = useState(location.state?.message ?? '')
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
+
+  useEffect(() => {
+    if (location.state?.message) {
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location.pathname, location.state, navigate])
+
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLocaleLowerCase()
     return products.filter(
@@ -72,7 +84,7 @@ function AdminProducts() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-neutral-900">إدارة المنتجات</h1>
         <Link
-          to="/admin/products/new"
+          to={`${adminHomePath}/products/new`}
           className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-brand-600 px-4 font-bold text-white hover:bg-opacity-90"
         >
           إضافة منتج
@@ -85,6 +97,11 @@ function AdminProducts() {
             إعادة المحاولة
           </button>
         </div>
+      ) : null}
+      {successMessage ? (
+        <p role="status" className="font-semibold text-success-600">
+          {successMessage}
+        </p>
       ) : null}
       <ProductFilters
         search={search}
@@ -114,7 +131,7 @@ function AdminProducts() {
                     <td className="p-4 font-bold text-neutral-900">{product.name}</td>
                     <td className="p-4">{getCategoryLabel(product.category)}</td><td className="p-4">{product.price} ج.م</td>
                     <td className="p-4">{stockTotal(product)}</td><td className="p-4">{product.isActive ? 'نشط' : 'غير نشط'}</td>
-                    <td className="p-4"><ProductActions product={product} onDelete={handleDelete} /></td>
+                    <td className="p-4"><ProductActions product={product} onDelete={handleDelete} adminHomePath={adminHomePath} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -128,7 +145,7 @@ function AdminProducts() {
                   <div><dt className="text-neutral-600">التصنيف</dt><dd>{getCategoryLabel(product.category)}</dd></div><div><dt className="text-neutral-600">السعر</dt><dd>{product.price} ج.م</dd></div>
                   <div><dt className="text-neutral-600">المخزون</dt><dd>{stockTotal(product)}</dd></div><div><dt className="text-neutral-600">الحالة</dt><dd>{product.isActive ? 'نشط' : 'غير نشط'}</dd></div>
                 </dl>
-                <div className="mt-4"><ProductActions product={product} onDelete={handleDelete} /></div>
+                <div className="mt-4"><ProductActions product={product} onDelete={handleDelete} adminHomePath={adminHomePath} /></div>
               </article>
             ))}
           </div>
@@ -138,8 +155,8 @@ function AdminProducts() {
   )
 }
 
-function ProductActions({ product, onDelete }) {
-  return <div className="flex flex-wrap gap-3"><Link to={`/admin/products/${product.id}`} className="inline-flex min-h-[44px] items-center font-semibold text-brand-600 hover:underline">تعديل</Link><button type="button" onClick={() => onDelete(product)} className="min-h-[44px] font-semibold text-danger-600 hover:underline">حذف</button></div>
+function ProductActions({ product, onDelete, adminHomePath }) {
+  return <div className="flex flex-wrap gap-3"><Link to={`${adminHomePath}/products/${product.id}`} className="inline-flex min-h-[44px] items-center font-semibold text-brand-600 hover:underline">تعديل</Link><button type="button" onClick={() => onDelete(product)} className="min-h-[44px] font-semibold text-danger-600 hover:underline">حذف</button></div>
 }
 
 export default AdminProducts

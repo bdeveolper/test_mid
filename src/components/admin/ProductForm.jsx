@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { SIZES_BY_CATEGORY } from '../../data/options'
 import { CATEGORIES } from '../../lib/categories'
-import { saveProduct } from '../../services/productService'
+import { saveProduct, uploadProductImage } from '../../services/productService'
 import ImagePicker from './ImagePicker'
 import VariantEditor from './VariantEditor'
 
-function ProductForm({ product, submitLabel }) {
+function ProductForm({ product, submitLabel, onSuccess }) {
   const [fields, setFields] = useState({
     name: product?.name ?? '',
     description: product?.description ?? '',
@@ -30,6 +30,7 @@ function ProductForm({ product, submitLabel }) {
   const [status, setStatus] = useState({ type: '', message: '' })
   const [variantNotice, setVariantNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const objectUrls = useRef(new Set())
 
   useEffect(
@@ -66,7 +67,7 @@ function ProductForm({ product, submitLabel }) {
       .map((file) => {
         const src = URL.createObjectURL(file)
         objectUrls.current.add(src)
-        return { id: src, src }
+        return { id: src, src, file }
       })
     setImages((current) => [...current, ...selected])
   }
@@ -108,20 +109,57 @@ function ProductForm({ product, submitLabel }) {
 
     setSaving(true)
     try {
+      const selectedImages = images.filter((image) => image.file)
+      const invalidImageSource = images.some(
+        (image) =>
+          !image.file && /^(blob:|data:)/i.test(image.src),
+      )
+      const existingImageUrls = images
+        .filter((image) => !image.file && /^https?:\/\//i.test(image.src))
+        .map((image) => image.src)
+      const uploadedImageUrls = []
+      let uploadFailed = false
+
+      if (selectedImages.length) {
+        setUploading(true)
+        const uploadResults = await Promise.allSettled(
+          selectedImages.map((image) => uploadProductImage(image.file)),
+        )
+        uploadResults.forEach((result) => {
+          if (result.status === 'fulfilled' && /^https?:\/\//i.test(result.value)) {
+            uploadedImageUrls.push(result.value)
+          } else {
+            uploadFailed = true
+            if (result.status === 'rejected') {
+              console.error('تعذّر رفع صورة المنتج', result.reason)
+            }
+          }
+        })
+        setUploading(false)
+      }
+
       await saveProduct(
         {
           ...fields,
           id: product?.id,
           name: fields.name.trim(),
           price: Number(fields.price),
-          images: images.map((image) => image.src),
+          images: [...existingImageUrls, ...uploadedImageUrls],
         },
         variants.map((variant) => ({
           ...variant,
           stock: Number(variant.stock),
         })),
       )
-      setStatus({ type: 'success', message: 'تم حفظ المنتج بنجاح.' })
+      setStatus(
+        invalidImageSource || uploadFailed
+          ? {
+              type: 'error',
+              message: 'تعذّر رفع بعض الصور، أعيدي اختيارها',
+            }
+          : { type: 'success', message: 'تم حفظ المنتج بنجاح.' },
+      )
+      onSuccess?.()
     } catch (error) {
       console.error('تعذّر حفظ المنتج', error)
       setStatus({
@@ -214,10 +252,10 @@ function ProductForm({ product, submitLabel }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || uploading}
           className="min-h-[48px] rounded-xl bg-brand-600 px-6 font-bold text-white hover:bg-opacity-90 disabled:cursor-wait disabled:opacity-60"
         >
-          {saving ? 'جارٍ الحفظ...' : submitLabel}
+          {uploading ? 'جاري رفع الصور...' : saving ? 'جارٍ الحفظ...' : submitLabel}
         </button>
         {status.message ? (
           <p

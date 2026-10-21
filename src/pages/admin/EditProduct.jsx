@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import ProductForm from '../../components/admin/ProductForm'
+import { useAuth } from '../../context/AuthContext'
 import { getProductById } from '../../services/productService'
 
 function EditProduct() {
   const { id } = useParams()
+  const { adminHomePath } = useAuth()
+  const navigate = useNavigate()
   const [state, setState] = useState({ id: '', product: null, loading: true, error: '' })
 
   useEffect(() => {
@@ -39,7 +42,7 @@ function EditProduct() {
         <p role={state.error ? 'alert' : undefined} className="font-semibold text-danger-600">
           {state.error || 'المنتج غير موجود.'}
         </p>
-        <Link to="/admin" className="font-semibold text-brand-600 hover:underline">
+        <Link to={adminHomePath} className="font-semibold text-brand-600 hover:underline">
           العودة للمنتجات
         </Link>
       </section>
@@ -50,11 +53,20 @@ function EditProduct() {
     <section className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-neutral-900">تعديل المنتج</h1>
-        <Link to="/admin" className="font-semibold text-brand-600 hover:underline">
+        <Link to={adminHomePath} className="font-semibold text-brand-600 hover:underline">
           العودة للمنتجات
         </Link>
       </div>
-      <ProductForm key={state.product.id} product={state.product} submitLabel="حفظ التعديلات" />
+      <ProductForm
+        key={state.product.id}
+        product={state.product}
+        submitLabel="حفظ التعديلات"
+        onSuccess={() =>
+          navigate(adminHomePath, {
+            state: { message: 'تم حفظ المنتج بنجاح' },
+          })
+        }
+      />
     </section>
   )
 }

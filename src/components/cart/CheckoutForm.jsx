@@ -3,7 +3,7 @@ import CountryCodeButton from './CountryCodeButton'
 import { COUNTRIES } from '../../data/countries'
 import { normalizePhone, toE164, validatePhone } from '../../lib/phone'
 
-function CheckoutForm({ onSubmit }) {
+function CheckoutForm({ onSubmit, submitting = false }) {
   const [customer, setCustomer] = useState({ name: '', phone: '', address: '' })
   const [countryCode, setCountryCode] = useState(COUNTRIES[0].code)
   const [errors, setErrors] = useState({})
@@ -108,9 +108,10 @@ function CheckoutForm({ onSubmit }) {
       </label>
       <button
         type="submit"
+        disabled={submitting}
         className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-brand-600 px-6 font-bold text-white transition-colors hover:bg-opacity-90 sm:w-auto sm:self-start"
       >
-        إرسال الطلب عبر واتساب
+        {submitting ? 'جارٍ تسجيل الطلب...' : 'إرسال الطلب عبر واتساب'}
       </button>
     </form>
   )

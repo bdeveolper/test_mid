@@ -60,8 +60,17 @@ function normalizeVariants(variants) {
   return [...uniqueVariants.values()]
 }
 
-function throwIfError(error) {
+function throwIfError(error, status) {
   if (error) {
+    if (import.meta.env.DEV) {
+      console.error('Supabase request failed', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        status: status ?? error.status ?? error.statusCode ?? null,
+      })
+    }
     throw new Error(getArabicError(error), { cause: error })
   }
 }
@@ -112,8 +121,8 @@ export async function getProducts({ category, size, color, search } = {}) {
     query = query.eq('category', category)
   }
 
-  const { data, error } = await query
-  throwIfError(error)
+  const { data, error, status } = await query
+  throwIfError(error, status)
 
   let products = (data ?? []).map(mapProductFromDb)
   if (search?.trim()) {
@@ -136,22 +145,22 @@ export async function getProducts({ category, size, color, search } = {}) {
 }
 
 export async function getProductById(id) {
-  const { data, error } = await supabase
+  const { data, error, status } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('id', id)
     .eq('is_active', true)
     .maybeSingle()
-  throwIfError(error)
+  throwIfError(error, status)
   return data ? mapProductFromDb(data) : null
 }
 
 export async function getAdminProducts() {
-  const { data, error } = await supabase
+  const { data, error, status } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
     .order('created_at', { ascending: false })
-  throwIfError(error)
+  throwIfError(error, status)
   return (data ?? []).map(mapProductFromDb)
 }
 
@@ -160,40 +169,44 @@ export async function saveProduct(product, variants = []) {
   let productId = product.id
 
   if (!productId) {
-    const { data, error } = await supabase
+    const { data, error, status } = await supabase
       .from('products')
       .insert(mapProductToDb(product, true))
       .select('id')
       .single()
-    throwIfError(error)
+    throwIfError(error, status)
     productId = data.id
 
     if (variantRecords.length) {
-      const { error: variantsError } = await supabase.from('variants').insert(
+      const { error: variantsError, status: variantsStatus } = await supabase.from('variants').insert(
         variantRecords.map((variant) => ({
           ...variant,
           product_id: productId,
         })),
       )
-      throwIfError(variantsError)
+      throwIfError(variantsError, variantsStatus)
     }
   } else {
-    const { data, error } = await supabase
+    const { data, error, status } = await supabase
       .from('products')
       .update(mapProductToDb(product))
       .eq('id', productId)
       .select('id')
       .maybeSingle()
-    throwIfError(error)
+    throwIfError(error, status)
     if (!data) {
       throw new Error('المنتج غير موجود أو لا تملك صلاحية تعديله.')
     }
 
-    const { data: existingVariants, error: existingError } = await supabase
+    const {
+      data: existingVariants,
+      error: existingError,
+      status: existingStatus,
+    } = await supabase
       .from('variants')
       .select('id, size, color')
       .eq('product_id', productId)
-    throwIfError(existingError)
+    throwIfError(existingError, existingStatus)
 
     const existingByPair = new Map(
       (existingVariants ?? []).map((variant) => [
@@ -208,13 +221,17 @@ export async function saveProduct(product, variants = []) {
       const key = JSON.stringify([variant.size, variant.color])
       const existing = existingByPair.get(key)
       if (existing) {
-        const { data: updatedVariant, error: updateError } = await supabase
+        const {
+          data: updatedVariant,
+          error: updateError,
+          status: updateStatus,
+        } = await supabase
           .from('variants')
           .update({ stock: variant.stock })
           .eq('id', existing.id)
           .select('id')
           .maybeSingle()
-        throwIfError(updateError)
+        throwIfError(updateError, updateStatus)
         if (!updatedVariant) {
           throw new Error('تعذّر تحديث مخزون هذا المقاس واللون.')
         }
@@ -225,40 +242,40 @@ export async function saveProduct(product, variants = []) {
     }
 
     if (newVariants.length) {
-      const { error: insertError } = await supabase
+      const { error: insertError, status: insertStatus } = await supabase
         .from('variants')
         .insert(newVariants)
-      throwIfError(insertError)
+      throwIfError(insertError, insertStatus)
     }
 
     const removedIds = (existingVariants ?? [])
       .filter((variant) => !retainedIds.has(variant.id))
       .map((variant) => variant.id)
     if (removedIds.length) {
-      const { error: deleteError } = await supabase
+      const { error: deleteError, status: deleteStatus } = await supabase
         .from('variants')
         .delete()
         .in('id', removedIds)
-      throwIfError(deleteError)
+      throwIfError(deleteError, deleteStatus)
     }
   }
 
-  const { data, error } = await supabase
+  const { data, error, status } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('id', productId)
     .single()
-  throwIfError(error)
+  throwIfError(error, status)
   return mapProductFromDb(data)
 }
 
 export async function deleteProduct(id) {
-  const { data, error } = await supabase
+  const { data, error, status } = await supabase
     .from('products')
     .delete()
     .eq('id', id)
     .select('id')
-  throwIfError(error)
+  throwIfError(error, status)
   return (data ?? []).length > 0
 }
 

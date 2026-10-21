@@ -3,6 +3,22 @@ import { Link } from 'react-router-dom'
 import { getCategoryLabel } from '../../lib/categories'
 import QuickViewModal from './QuickViewModal'
 
+function ProductCardImage({ src, alt }) {
+  const [hasError, setHasError] = useState(false)
+
+  if (hasError) return null
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+      onError={() => setHasError(true)}
+    />
+  )
+}
+
 function ProductCard({ product }) {
   const [quickViewOpen, setQuickViewOpen] = useState(false)
   const quickViewButtonRef = useRef(null)
@@ -19,11 +35,10 @@ function ProductCard({ product }) {
       </Link>
       <div className="pointer-events-none aspect-square w-full overflow-hidden bg-neutral-100">
         {image ? (
-          <img
+          <ProductCardImage
+            key={image}
             src={image}
             alt={product.name}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : null}
       </div>

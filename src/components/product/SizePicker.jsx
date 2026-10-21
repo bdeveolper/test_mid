@@ -31,13 +31,13 @@ export function ColorPicker({ variants, selectedColor, onSelect }) {
               aria-pressed={selected}
               disabled={!available}
               onClick={() => onSelect(color)}
-              className={`group relative inline-flex h-11 w-11 items-center justify-center rounded-full border-2 ${
-                selected ? 'border-brand-600' : 'border-neutral-100'
+              className={`group relative inline-flex h-11 w-11 items-center justify-center rounded-full ring-1 ring-neutral-600/40 ${
+                selected ? 'ring-2 ring-brand-600 ring-offset-2' : ''
               } ${available ? '' : 'cursor-not-allowed opacity-45 grayscale'}`}
             >
               <span
                 aria-hidden="true"
-                className="h-8 w-8 rounded-full border border-neutral-100"
+                className="h-8 w-8 rounded-full"
                 style={{ backgroundColor: swatchColors[color] ?? '#9ca3af' }}
               />
               {!available ? (

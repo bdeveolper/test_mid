@@ -47,7 +47,7 @@ const SAMPLE_ITEMS = [
 ]
 const SAMPLE_CUSTOMER = {
   name: 'أحمد محمد',
-  phone: '01112360851',
+  phone: '[رقم الهاتف]',
   address: 'شارع التحرير، الدقي، الجيزة',
 }
 
