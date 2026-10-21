@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { SIZES_BY_CATEGORY } from '../../data/options'
 import { CATEGORIES } from '../../lib/categories'
 import { saveProduct } from '../../services/productService'
 import ImagePicker from './ImagePicker'
 import VariantEditor from './VariantEditor'
-
-const emptyVariant = (id) => ({ id, size: '', color: '', stock: '0' })
 
 function ProductForm({ product, submitLabel }) {
   const [fields, setFields] = useState({
@@ -21,16 +20,17 @@ function ProductForm({ product, submitLabel }) {
     })),
   )
   const [variants, setVariants] = useState(() =>
-    (product?.variants ?? []).map((variant) => ({
-      ...variant,
-      stock: String(variant.stock),
+    (product?.variants ?? []).map(({ size, color, stock }) => ({
+      size,
+      color,
+      stock,
     })),
   )
   const [errors, setErrors] = useState({})
   const [status, setStatus] = useState({ type: '', message: '' })
+  const [variantNotice, setVariantNotice] = useState('')
   const [saving, setSaving] = useState(false)
   const objectUrls = useRef(new Set())
-  const nextVariantId = useRef(0)
 
   useEffect(
     () => () => {
@@ -41,6 +41,18 @@ function ProductForm({ product, submitLabel }) {
 
   const updateField = (event) => {
     const { name, value, type, checked } = event.target
+    if (name === 'category' && value !== fields.category) {
+      const validSizes = SIZES_BY_CATEGORY[value] ?? []
+      const removed = variants.filter((variant) => !validSizes.includes(variant.size))
+      setVariants((current) =>
+        current.filter((variant) => validSizes.includes(variant.size)),
+      )
+      setVariantNotice(
+        removed.length
+          ? `تم حذف المقاسات غير المتاحة للتصنيف الجديد: ${[...new Set(removed.map((variant) => variant.size))].join('، ')}.`
+          : '',
+      )
+    }
     setFields((current) => ({
       ...current,
       [name]: type === 'checkbox' ? checked : value,
@@ -67,12 +79,8 @@ function ProductForm({ product, submitLabel }) {
     setImages((current) => current.filter((entry) => entry.id !== id))
   }
 
-  const updateVariant = (index, field, value) => {
-    setVariants((current) =>
-      current.map((variant, row) =>
-        row === index ? { ...variant, [field]: value } : variant,
-      ),
-    )
+  const updateVariants = (nextVariants) => {
+    setVariants(nextVariants)
     setErrors((current) => ({ ...current, variants: '' }))
   }
 
@@ -85,27 +93,8 @@ function ProductForm({ product, submitLabel }) {
       nextErrors.price = 'يجب أن يكون السعر أكبر من صفر.'
     }
 
-    const seen = new Set()
-    const duplicate = variants.some((variant) => {
-      const key = JSON.stringify([
-        variant.size.trim().toLocaleLowerCase(),
-        variant.color.trim().toLocaleLowerCase(),
-      ])
-      if (seen.has(key)) return true
-      seen.add(key)
-      return false
-    })
-    if (duplicate) nextErrors.variants = 'يوجد مقاس ولون مكرران.'
-    if (
-      variants.some(
-        (variant) =>
-          !variant.size.trim() ||
-          !variant.color.trim() ||
-          !Number.isInteger(Number(variant.stock)) ||
-          Number(variant.stock) < 0,
-      )
-    ) {
-      nextErrors.variants = 'يرجى إدخال المقاس واللون ومخزون صحيح لكل صف.'
+    if (fields.isActive && variants.length === 0) {
+      nextErrors.variants = 'يرجى إضافة مقاس واحد على الأقل للمنتج النشط.'
     }
 
     setErrors(nextErrors)
@@ -211,19 +200,16 @@ function ProductForm({ product, submitLabel }) {
 
       <ImagePicker images={images} onAdd={addImages} onRemove={removeImage} />
       <VariantEditor
+        category={fields.category}
         variants={variants}
         error={errors.variants}
-        onChange={updateVariant}
-        onAdd={() =>
-          setVariants((current) => [
-            ...current,
-            emptyVariant(`new-${nextVariantId.current++}`),
-          ])
-        }
-        onRemove={(index) =>
-          setVariants((current) => current.filter((_, row) => row !== index))
-        }
+        onChange={updateVariants}
       />
+      {variantNotice ? (
+        <p role="status" className="text-sm font-semibold text-neutral-600">
+          {variantNotice}
+        </p>
+      ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <button

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import siteContent from '../../data/siteContent'
 import { buildWhatsAppUrl } from '../../lib/whatsapp'
+import FooterSection, { ContactIcon } from './FooterSection'
 
 const year = new Date().getFullYear()
 const phone = import.meta.env.VITE_WHATSAPP_NUMBER
@@ -52,10 +53,6 @@ const socialLinks = [
   },
 ]
 
-function SectionTitle({ children }) {
-  return <h2 className="mb-2 text-base font-extrabold leading-6 text-white">{children}</h2>
-}
-
 function FooterLink({ to, children }) {
   return (
     <Link
@@ -106,42 +103,44 @@ function Footer() {
             </div>
           </section>
 
-          <nav aria-label="روابط سريعة">
-            <SectionTitle>روابط سريعة</SectionTitle>
-            <ul className="flex flex-col">
-              {quickLinks.map(({ to, label }) => (
-                <li key={label}><FooterLink to={to}>{label}</FooterLink></li>
-              ))}
-            </ul>
+          <nav aria-label="روابط سريعة" className="col-span-2 lg:col-span-1">
+            <FooterSection id="quick-links-body" title="روابط سريعة">
+              <ul className="flex flex-col">
+                {quickLinks.map(({ to, label }) => (
+                  <li key={label}><FooterLink to={to}>{label}</FooterLink></li>
+                ))}
+              </ul>
+            </FooterSection>
           </nav>
 
-          <section>
-            <SectionTitle>تواصل معنا</SectionTitle>
-            <ul className="flex flex-col gap-1 text-sm leading-5 text-white/85">
-              <li className="flex items-start gap-2">
-                <ContactIcon type="pin" />
-                <span>{siteContent.storeAddress}</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <ContactIcon type="chat" />
-                {phone ? (
-                  <a className="min-h-9 inline-flex items-center transition-colors hover:text-white" href={buildWhatsAppUrl(phone, 'مرحباً، أود التواصل مع المتجر.')}>
-                    +{phone}
+          <div className="col-span-2 lg:col-span-1">
+            <FooterSection id="contact-body" title="تواصل معنا">
+              <ul className="flex flex-col gap-1 text-sm leading-5 text-white/85">
+                <li className="flex items-start gap-2">
+                  <ContactIcon type="pin" />
+                  <span>{siteContent.storeAddress}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <ContactIcon type="chat" />
+                  {phone ? (
+                    <a className="min-h-9 inline-flex items-center transition-colors hover:text-white" href={buildWhatsAppUrl(phone, 'مرحباً، أود التواصل مع المتجر.')}>
+                      +{phone}
+                    </a>
+                  ) : <span>واتساب غير متاح حالياً</span>}
+                </li>
+                <li className="flex items-center gap-2">
+                  <ContactIcon type="mail" />
+                  <a className="min-h-9 inline-flex items-center break-all transition-colors hover:text-white" href={`mailto:${siteContent.storeEmail}`}>
+                    {siteContent.storeEmail}
                   </a>
-                ) : <span>واتساب غير متاح حالياً</span>}
-              </li>
-              <li className="flex items-center gap-2">
-                <ContactIcon type="mail" />
-                <a className="min-h-9 inline-flex items-center break-all transition-colors hover:text-white" href={`mailto:${siteContent.storeEmail}`}>
-                  {siteContent.storeEmail}
-                </a>
-              </li>
-              <li className="flex items-start gap-2">
-                <ContactIcon type="clock" />
-                <span>{siteContent.supportHours}</span>
-              </li>
-            </ul>
-          </section>
+                </li>
+                <li className="flex items-start gap-2">
+                  <ContactIcon type="clock" />
+                  <span>{siteContent.supportHours}</span>
+                </li>
+              </ul>
+            </FooterSection>
+          </div>
         </div>
 
         <div className="mt-6 flex justify-center border-t border-white/25 pt-4">
@@ -151,21 +150,6 @@ function Footer() {
         </div>
       </div>
     </footer>
-  )
-}
-
-function ContactIcon({ type }) {
-  const paths = {
-    pin: <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
-    chat: <><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4A8 8 0 1 1 20 11.5Z" /><path d="M9 8.5c.5 2 2 3.5 4.5 4.5" /></>,
-    mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></>,
-    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-accent-500">
-      {paths[type]}
-    </svg>
   )
 }
 

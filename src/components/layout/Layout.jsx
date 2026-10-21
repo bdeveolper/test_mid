@@ -1,5 +1,6 @@
 import Header from './Header'
 import Footer from './Footer'
+import WhatsAppButton from './WhatsAppButton'
 import { useLocation } from 'react-router-dom'
 
 function Layout({ children }) {
@@ -18,6 +19,7 @@ function Layout({ children }) {
         </div>
       </main>
       <Footer />
+      <WhatsAppButton />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import VariantSelector from '../components/product/VariantSelector'
 import BackButton from '../components/layout/BackButton'
 import { useCart } from '../context/CartContext'
 import { getCategoryLabel } from '../lib/categories'
+import { isOneSizeProduct } from '../lib/variants'
 import { getProductById } from '../services/productService'
 
 const uniqueValues = (values) => Array.from(new Set(values))
@@ -44,6 +45,7 @@ function ProductDetails() {
   const loading = result?.id !== id
   const product = loading ? null : result?.product
   const variants = product?.variants
+  const oneSize = product ? isOneSizeProduct(product) : false
 
   const sizes = useMemo(
     () => uniqueValues((variants ?? []).map((variant) => variant.size)),
@@ -82,7 +84,10 @@ function ProductDetails() {
 
   const selectedVariant = variants.find(
     (variant) =>
-      variant.size === selectedSize && variant.color === selectedColor,
+      (oneSize
+        ? variant.size.trim() === 'مقاس واحد'
+        : variant.size === selectedSize) &&
+      variant.color === selectedColor,
   )
   const canAdd = Boolean(selectedVariant && selectedVariant.stock > 0)
 
@@ -130,16 +135,25 @@ function ProductDetails() {
         <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">
           {product.name}
         </h1>
-        <p className="text-2xl font-bold text-accent-500">{product.price} ج.م</p>
+        <div className="flex items-center gap-2">
+          <p className="text-2xl font-bold text-accent-500">{product.price} ج.م</p>
+          {oneSize ? (
+            <span className="rounded-full bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-600">
+              مقاس واحد
+            </span>
+          ) : null}
+        </div>
         <p className="text-neutral-600">{product.description}</p>
 
-        <VariantSelector
-          title="المقاس"
-          options={sizes}
-          selected={selectedSize}
-          isAvailable={isAvailable('size')}
-          onSelect={handleSizeSelect}
-        />
+        {!oneSize ? (
+          <VariantSelector
+            title="المقاس"
+            options={sizes}
+            selected={selectedSize}
+            isAvailable={isAvailable('size')}
+            onSelect={handleSizeSelect}
+          />
+        ) : null}
 
         <VariantSelector
           title="اللون"
@@ -149,7 +163,7 @@ function ProductDetails() {
           onSelect={handleColorSelect}
         />
 
-        {selectedSize && selectedColor ? (
+        {(oneSize || selectedSize) && selectedColor ? (
           <p
             className={
               canAdd

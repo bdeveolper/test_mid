@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import FilterBar from '../components/product/FilterBar'
 import ProductGrid from '../components/product/ProductGrid'
 import siteContent from '../data/siteContent'
 import { getProducts } from '../services/productService'
 
 function Home() {
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [result, setResult] = useState(null)
   const [searchDraft, setSearchDraft] = useState(null)
@@ -46,6 +47,25 @@ function Home() {
       active = false
     }
   }, [category, search, requestKey])
+
+  useEffect(() => {
+    if (location.pathname === '/') {
+      const frame = window.requestAnimationFrame(() => {
+        if (location.hash === '#products') {
+          document
+            .getElementById('products')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          return
+        }
+
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
+      })
+
+      return () => window.cancelAnimationFrame(frame)
+    }
+
+    return undefined
+  }, [location.pathname, location.hash])
 
   const loading = result?.key !== requestKey
   const products = result?.products ?? []

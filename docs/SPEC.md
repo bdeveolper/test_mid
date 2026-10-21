@@ -33,6 +33,14 @@ Functional specification for **Scrub Store**.
 
 Admin routes are **Phase 4** (UI with mock data) and **Phase 5** (Supabase auth).
 
+### Admin Product Variants
+
+The product form organizes variants by color, then by the sizes available for the selected
+category. Scrubs use S, M, L, XL, and XXL; footwear uses sizes 36 through 43; accessories use
+مقاس واحد. Each checked size has an integer stock value of zero or more. A color cannot be
+selected for multiple groups. Changing category removes sizes that are not valid for the new
+category and notifies the admin. Active products must have at least one variant.
+
 ## Product Categories
 
 - **scrubs**: scrub sets, lab coats, uniforms.
@@ -65,6 +73,7 @@ The product model includes a `category` field.
 ## Variant Rules
 
 - Each `(productId, size, color)` combination is unique.
+- Products whose variants all have size `مقاس واحد` show a one-size badge instead of a size selector; customers choose only a color. Mixed-size products continue to require size selection.
 - Price is per product, not per variant.
 - Stock `0` is shown as `غير متوفر` and cannot be added to cart.
 
@@ -87,7 +96,7 @@ Arabic text built in `src/lib/whatsappInvoice.js` in this format:
 
 بيانات العميل:
 الاسم: [CUSTOMER NAME]
-رقم الهاتف: [CUSTOMER PHONE]
+رقم الهاتف: [+<DIAL CODE> <NATIONAL NUMBER>]
 العنوان: [CUSTOMER ADDRESS]
 
 المنتجات:
@@ -102,6 +111,12 @@ Arabic text built in `src/lib/whatsappInvoice.js` in this format:
 
 Opened with `https://wa.me/<number>?text=<encodeURIComponent(message)>`. This works on mobile and
 desktop.
+
+In checkout, the customer selects a country and enters a national phone number. The number is
+validated for that country's length and optional leading digits, normalized to E.164, and
+displayed with a space after the dial code (for example `+20 1112360851`). Egypt is selected by
+default; Egyptian mobile numbers must start with `1` and contain 10 national digits after an
+optional trunk `0`.
 
 ## Out of Scope For Now
 

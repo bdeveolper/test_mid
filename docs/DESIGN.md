@@ -37,7 +37,9 @@ Defined in the Tailwind config as `brand`, `accent`, `neutral`, `danger`, and `s
 - The home page header overlays the hero with a translucent, blurred background; other pages use a
   sticky solid header. Both include the store name and a cart icon with count.
 - Simple footer with the store name and copyright.
-- Cards are `rounded-2xl`, with a `neutral-100` border and a subtle shadow on hover. The whole card links to its product details; option chip rows stay single-line and horizontally scrollable on mobile.
+- Product cards are `rounded-2xl`, with a `neutral-100` border and a subtle shadow on hover. The image is a stretched link to product details; cards show category, a two-line-clamped name, price, and a round quick-view action. One-size products show a compact badge beside the price.
+- Quick view is a responsive modal: a bottom sheet on mobile and a centered two-column dialog from `md`, with the product image at the start and variant selection at the end. Its close header and quantity/add-to-cart footer stay fixed while the modal body scrolls; sizes wrap on mobile, and one-size products show no size row.
+- A fixed WhatsApp quick-inquiry button appears near the lower edge of customer pages when the store WhatsApp number is configured.
 
 ## Responsive Breakpoints
 

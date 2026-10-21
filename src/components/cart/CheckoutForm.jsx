@@ -1,8 +1,13 @@
 import { useState } from 'react'
+import CountryCodeButton from './CountryCodeButton'
+import { COUNTRIES } from '../../data/countries'
+import { normalizePhone, toE164, validatePhone } from '../../lib/phone'
 
 function CheckoutForm({ onSubmit }) {
   const [customer, setCustomer] = useState({ name: '', phone: '', address: '' })
+  const [countryCode, setCountryCode] = useState(COUNTRIES[0].code)
   const [errors, setErrors] = useState({})
+  const country = COUNTRIES.find((item) => item.code === countryCode) ?? COUNTRIES[0]
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -14,20 +19,24 @@ function CheckoutForm({ onSubmit }) {
     event.preventDefault()
     const nextErrors = {}
     const name = customer.name.trim()
-    const phone = customer.phone.trim()
     const address = customer.address.trim()
 
     if (name.length < 3) nextErrors.name = 'يرجى إدخال الاسم بالكامل (3 أحرف على الأقل).'
-    if (!/^01\d{9}$/.test(phone)) {
-      nextErrors.phone = 'أدخل رقم هاتف مصرياً صحيحاً يبدأ بـ 01 ويتكون من 11 رقماً.'
-    }
+    const phoneError = validatePhone(customer.phone, country)
+    if (phoneError) nextErrors.phone = phoneError
     if (address.length < 10) {
       nextErrors.address = 'يرجى إدخال عنوان لا يقل عن 10 أحرف.'
     }
 
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length === 0) {
-      onSubmit({ name, phone, address })
+      const nationalDigits = normalizePhone(customer.phone, country)
+      onSubmit({
+        name,
+        phone: toE164(nationalDigits, country),
+        dialCode: country.dialCode,
+        address,
+      })
     }
   }
 
@@ -37,45 +46,48 @@ function CheckoutForm({ onSubmit }) {
       className="flex flex-col gap-4 rounded-2xl border border-neutral-100 bg-white p-4 sm:p-6"
     >
       <h2 className="text-xl font-bold text-neutral-900">بيانات العميل</h2>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-1 font-semibold text-neutral-900">
-          الاسم بالكامل
-          <input
-            name="name"
-            value={customer.name}
-            onChange={handleChange}
-            autoComplete="name"
-            aria-invalid={Boolean(errors.name)}
-            aria-describedby={errors.name ? 'checkout-name-error' : undefined}
-            className="min-h-[48px] rounded-xl border border-neutral-100 bg-white px-3 font-normal"
+      <label className="flex flex-col gap-1 font-semibold text-neutral-900">
+        الاسم بالكامل
+        <input
+          name="name"
+          value={customer.name}
+          onChange={handleChange}
+          autoComplete="name"
+          aria-invalid={Boolean(errors.name)}
+          aria-describedby={errors.name ? 'checkout-name-error' : undefined}
+          className="min-h-[48px] rounded-xl border border-neutral-100 bg-white px-3 font-normal"
+        />
+        {errors.name ? <span id="checkout-name-error" className="text-sm text-danger-600">{errors.name}</span> : null}
+      </label>
+      <label className="flex w-full flex-col gap-1 font-semibold text-neutral-900">
+        رقم الهاتف
+        <span
+          dir="ltr"
+          className="relative flex min-h-[48px] w-full items-stretch rounded-xl border border-neutral-100 bg-white focus-within:ring-2 focus-within:ring-brand-600"
+        >
+          <CountryCodeButton
+            countries={COUNTRIES}
+            country={country}
+            onSelect={(item) => {
+              setCountryCode(item.code)
+              setErrors((current) => ({ ...current, phone: '' }))
+            }}
           />
-          {errors.name ? (
-            <span id="checkout-name-error" className="text-sm text-danger-600">
-              {errors.name}
-            </span>
-          ) : null}
-        </label>
-        <label className="flex flex-col gap-1 font-semibold text-neutral-900">
-          رقم الهاتف
           <input
             name="phone"
             type="tel"
-            inputMode="numeric"
+            inputMode="tel"
             value={customer.phone}
             onChange={handleChange}
-            autoComplete="tel"
-            placeholder="01112360851"
+            autoComplete="tel-national"
+            placeholder="رقم الهاتف"
             aria-invalid={Boolean(errors.phone)}
             aria-describedby={errors.phone ? 'checkout-phone-error' : undefined}
-            className="min-h-[48px] rounded-xl border border-neutral-100 bg-white px-3 font-normal"
+            className="min-h-[48px] min-w-0 flex-1 bg-transparent px-3 text-start font-normal focus:outline-none"
           />
-          {errors.phone ? (
-            <span id="checkout-phone-error" className="text-sm text-danger-600">
-              {errors.phone}
-            </span>
-          ) : null}
-        </label>
-      </div>
+        </span>
+        {errors.phone ? <span id="checkout-phone-error" className="text-sm text-danger-600">{errors.phone}</span> : null}
+      </label>
       <label className="flex flex-col gap-1 font-semibold text-neutral-900">
         العنوان بالتفصيل
         <textarea

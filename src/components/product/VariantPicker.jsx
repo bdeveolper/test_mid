@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useCart } from '../../context/CartContext'
+import { isOneSizeProduct } from '../../lib/variants'
 
 function SelectionGroup({ label, options, selected, isDisabled, onSelect }) {
   return (
@@ -37,6 +38,7 @@ function SelectionGroup({ label, options, selected, isDisabled, onSelect }) {
 function VariantPicker({ product }) {
   const { addItem } = useCart()
   const variants = product.variants ?? []
+  const oneSize = isOneSizeProduct(product)
   const sizes = Array.from(new Set(variants.map((variant) => variant.size)))
   const colors = Array.from(new Set(variants.map((variant) => variant.color)))
   const [selectedSize, setSelectedSize] = useState('')
@@ -50,10 +52,13 @@ function VariantPicker({ product }) {
   }, [confirmation])
 
   const selectedVariant =
-    selectedSize && selectedColor
+    (oneSize || selectedSize) && selectedColor
       ? variants.find(
           (variant) =>
-            variant.size === selectedSize && variant.color === selectedColor,
+            (oneSize
+              ? variant.size.trim() === 'مقاس واحد'
+              : variant.size === selectedSize) &&
+            variant.color === selectedColor,
         )
       : null
   const canAdd = Boolean(selectedVariant && selectedVariant.stock > 0)
@@ -78,20 +83,28 @@ function VariantPicker({ product }) {
 
   return (
     <div className="relative z-10 mt-auto flex flex-1 flex-col gap-2 border-t border-neutral-100 p-3 pt-3 sm:p-4">
-      <SelectionGroup
-        label="المقاسات"
-        options={sizes}
-        selected={selectedSize}
-        isDisabled={(size) =>
-          !variants.some(
-            (variant) =>
-              variant.size === size &&
-              variant.stock > 0 &&
-              (!selectedColor || variant.color === selectedColor),
-          )
-        }
-        onSelect={setSelectedSize}
-      />
+      {oneSize ? (
+        <div className="flex h-[68px] items-center">
+          <span className="rounded-full bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-600">
+            مقاس واحد
+          </span>
+        </div>
+      ) : (
+        <SelectionGroup
+          label="المقاسات"
+          options={sizes}
+          selected={selectedSize}
+          isDisabled={(size) =>
+            !variants.some(
+              (variant) =>
+                variant.size === size &&
+                variant.stock > 0 &&
+                (!selectedColor || variant.color === selectedColor),
+            )
+          }
+          onSelect={setSelectedSize}
+        />
+      )}
       <SelectionGroup
         label="الألوان"
         options={colors}
@@ -101,14 +114,14 @@ function VariantPicker({ product }) {
             (variant) =>
               variant.color === color &&
               variant.stock > 0 &&
-              (!selectedSize || variant.size === selectedSize),
+              (oneSize || !selectedSize || variant.size === selectedSize),
           )
         }
         onSelect={setSelectedColor}
       />
 
-      <p className={`min-h-5 text-xs font-bold ${selectedSize && selectedColor ? (canAdd ? 'text-success-600' : 'text-danger-600') : 'invisible'}`}>
-        {selectedSize && selectedColor
+      <p className={`min-h-5 text-xs font-bold ${(oneSize || selectedSize) && selectedColor ? (canAdd ? 'text-success-600' : 'text-danger-600') : 'invisible'}`}>
+        {(oneSize || selectedSize) && selectedColor
           ? canAdd
             ? `متوفر: ${selectedVariant.stock} قطعة`
             : 'غير متوفر'

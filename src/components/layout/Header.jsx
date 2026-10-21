@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 
 const navigation = [
@@ -44,11 +44,42 @@ function Header() {
   const storeName = import.meta.env.VITE_STORE_NAME
   const { totalCount } = useCart()
   const location = useLocation()
+  const navigate = useNavigate()
   const [menuState, setMenuState] = useState({ locationKey: '', open: false })
   const menuOpen =
     menuState.locationKey === location.key && menuState.open
   const setMenuOpen = (open) =>
     setMenuState({ locationKey: location.key, open })
+
+  const handleNavigation = (event, to, label) => {
+    if (label === 'الرئيسية') {
+      if (location.pathname === '/') {
+        event.preventDefault()
+        setMenuOpen(false)
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
+        return
+      }
+
+      event.preventDefault()
+      setMenuOpen(false)
+      navigate('/')
+      return
+    }
+
+    if (label === 'المنتجات') {
+      event.preventDefault()
+      setMenuOpen(false)
+
+      if (location.pathname === '/') {
+        document
+          .getElementById('products')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        return
+      }
+
+      navigate('/#products')
+    }
+  }
 
   const navLinks = (
     <>
@@ -56,7 +87,10 @@ function Header() {
         <Link
           key={to}
           to={to}
-          onClick={() => setMenuOpen(false)}
+          onClick={(event) => {
+            handleNavigation(event, to, label)
+            setMenuOpen(false)
+          }}
           className="inline-flex min-h-[44px] items-center rounded-lg px-3 font-semibold text-neutral-600 transition-colors hover:bg-brand-50 hover:text-brand-600"
         >
           {label}
