@@ -1,84 +1,280 @@
-import { mockProducts } from '../data/mockProducts'
+import { supabase } from '../lib/supabase'
 
-const DELAY_MS = 300
+const PRODUCT_SELECT = '*, variants(*)'
+const IMAGE_BUCKET = 'product-images'
 
-let products = structuredClone(mockProducts)
+function mapProductFromDb(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    category: row.category,
+    price: Number(row.price),
+    images: row.images ?? [],
+    isActive: row.is_active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    variants: (row.variants ?? []).map((variant) => ({
+      id: variant.id,
+      productId: variant.product_id,
+      size: variant.size,
+      color: variant.color,
+      stock: Number(variant.stock),
+    })),
+  }
+}
 
-const wait = () => new Promise((resolve) => setTimeout(resolve, DELAY_MS))
+function mapProductToDb(product, includeCreatedAt = false) {
+  const record = {
+    name: product.name,
+    description: product.description ?? '',
+    category: product.category,
+    price: Number(product.price),
+    images: product.images ?? [],
+    is_active: Boolean(product.isActive),
+    updated_at: new Date().toISOString(),
+  }
+
+  if (includeCreatedAt && product.createdAt) {
+    record.created_at = product.createdAt
+  }
+
+  return record
+}
+
+function normalizeVariants(variants) {
+  const uniqueVariants = new Map()
+
+  for (const variant of variants) {
+    const key = JSON.stringify([variant.size, variant.color])
+    if (uniqueVariants.has(key)) {
+      throw new Error('لا يمكن إضافة نفس المقاس واللون أكثر من مرة.')
+    }
+    uniqueVariants.set(key, {
+      size: variant.size,
+      color: variant.color,
+      stock: Number(variant.stock),
+    })
+  }
+
+  return [...uniqueVariants.values()]
+}
+
+function throwIfError(error) {
+  if (error) {
+    throw new Error(getArabicError(error), { cause: error })
+  }
+}
+
+export function getArabicError(error) {
+  const message = String(
+    error?.message ?? error?.details ?? error?.hint ?? error ?? '',
+  ).toLowerCase()
+
+  if (message.includes('insufficient_stock')) {
+    return 'الكمية المطلوبة غير متوفرة'
+  }
+  if (message.includes('variant_not_available')) {
+    return 'هذا المنتج غير متاح حالياً'
+  }
+  if (message.includes('invalid_name')) {
+    return 'يرجى إدخال الاسم بشكل صحيح.'
+  }
+  if (message.includes('invalid_address')) {
+    return 'يرجى إدخال العنوان بشكل صحيح.'
+  }
+  if (message.includes('invalid_phone') || message.includes('invalid_dial_code')) {
+    return 'رقم الهاتف غير صحيح.'
+  }
+  if (message.includes('empty_cart')) {
+    return 'السلة فارغة.'
+  }
+  if (message.includes('invalid_quantity')) {
+    return 'الكمية المطلوبة غير صحيحة.'
+  }
+  if (message.includes('duplicate key') || message.includes('unique constraint')) {
+    return 'هذا المقاس واللون مضافان بالفعل لهذا المنتج.'
+  }
+  if (message.includes('not found') || message.includes('pgrst116')) {
+    return 'المنتج غير موجود أو لا تملك صلاحية الوصول إليه.'
+  }
+
+  return 'تعذّر إتمام العملية. يرجى المحاولة مرة أخرى.'
+}
 
 export async function getProducts({ category, size, color, search } = {}) {
-  await wait()
-
-  let result = products.filter((product) => product.isActive)
+  let query = supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('is_active', true)
 
   if (category) {
-    result = result.filter((product) => product.category === category)
+    query = query.eq('category', category)
   }
 
+  const { data, error } = await query
+  throwIfError(error)
+
+  let products = (data ?? []).map(mapProductFromDb)
   if (search?.trim()) {
-    const query = search.trim().toLocaleLowerCase()
-    result = result.filter((product) =>
-      `${product.name} ${product.description}`.toLocaleLowerCase().includes(query),
+    const term = search.trim().toLocaleLowerCase()
+    products = products.filter((product) =>
+      `${product.name} ${product.description}`.toLocaleLowerCase().includes(term),
     )
   }
-
   if (size || color) {
-    result = result.filter((product) =>
+    products = products.filter((product) =>
       product.variants.some(
         (variant) =>
-          (!size || variant.size === size) && (!color || variant.color === color),
+          (!size || variant.size === size) &&
+          (!color || variant.color === color),
       ),
     )
   }
 
-  return structuredClone(result)
+  return products
 }
 
 export async function getProductById(id) {
-  await wait()
-
-  const product = products.find((item) => item.id === id)
-  return product ? structuredClone(product) : null
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('id', id)
+    .eq('is_active', true)
+    .maybeSingle()
+  throwIfError(error)
+  return data ? mapProductFromDb(data) : null
 }
 
 export async function getAdminProducts() {
-  await wait()
-  return structuredClone(products)
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .order('created_at', { ascending: false })
+  throwIfError(error)
+  return (data ?? []).map(mapProductFromDb)
 }
 
 export async function saveProduct(product, variants = []) {
-  await wait()
+  const variantRecords = normalizeVariants(variants)
+  let productId = product.id
 
-  const id = product.id || `p-${Date.now()}`
-  const record = {
-    ...product,
-    id,
-    createdAt: product.createdAt || new Date().toISOString(),
-    variants: variants.map((variant, index) => ({
-      ...variant,
-      id: variant.id || `${id}-v${index + 1}`,
-      productId: id,
-    })),
-  }
+  if (!productId) {
+    const { data, error } = await supabase
+      .from('products')
+      .insert(mapProductToDb(product, true))
+      .select('id')
+      .single()
+    throwIfError(error)
+    productId = data.id
 
-  const index = products.findIndex((item) => item.id === id)
-  if (index === -1) {
-    products.push(record)
+    if (variantRecords.length) {
+      const { error: variantsError } = await supabase.from('variants').insert(
+        variantRecords.map((variant) => ({
+          ...variant,
+          product_id: productId,
+        })),
+      )
+      throwIfError(variantsError)
+    }
   } else {
-    products[index] = record
+    const { data, error } = await supabase
+      .from('products')
+      .update(mapProductToDb(product))
+      .eq('id', productId)
+      .select('id')
+      .maybeSingle()
+    throwIfError(error)
+    if (!data) {
+      throw new Error('المنتج غير موجود أو لا تملك صلاحية تعديله.')
+    }
+
+    const { data: existingVariants, error: existingError } = await supabase
+      .from('variants')
+      .select('id, size, color')
+      .eq('product_id', productId)
+    throwIfError(existingError)
+
+    const existingByPair = new Map(
+      (existingVariants ?? []).map((variant) => [
+        JSON.stringify([variant.size, variant.color]),
+        variant,
+      ]),
+    )
+    const retainedIds = new Set()
+    const newVariants = []
+
+    for (const variant of variantRecords) {
+      const key = JSON.stringify([variant.size, variant.color])
+      const existing = existingByPair.get(key)
+      if (existing) {
+        const { data: updatedVariant, error: updateError } = await supabase
+          .from('variants')
+          .update({ stock: variant.stock })
+          .eq('id', existing.id)
+          .select('id')
+          .maybeSingle()
+        throwIfError(updateError)
+        if (!updatedVariant) {
+          throw new Error('تعذّر تحديث مخزون هذا المقاس واللون.')
+        }
+        retainedIds.add(existing.id)
+      } else {
+        newVariants.push({ ...variant, product_id: productId })
+      }
+    }
+
+    if (newVariants.length) {
+      const { error: insertError } = await supabase
+        .from('variants')
+        .insert(newVariants)
+      throwIfError(insertError)
+    }
+
+    const removedIds = (existingVariants ?? [])
+      .filter((variant) => !retainedIds.has(variant.id))
+      .map((variant) => variant.id)
+    if (removedIds.length) {
+      const { error: deleteError } = await supabase
+        .from('variants')
+        .delete()
+        .in('id', removedIds)
+      throwIfError(deleteError)
+    }
   }
 
-  return structuredClone(record)
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('id', productId)
+    .single()
+  throwIfError(error)
+  return mapProductFromDb(data)
 }
 
 export async function deleteProduct(id) {
-  await wait()
+  const { data, error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', id)
+    .select('id')
+  throwIfError(error)
+  return (data ?? []).length > 0
+}
 
-  const index = products.findIndex((item) => item.id === id)
-  if (index === -1) {
-    return false
-  }
+export async function uploadProductImage(file) {
+  const randomId =
+    globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const extension = file.name?.split('.').pop()?.replace(/[^a-z\d]/gi, '')
+  const path = `${randomId}${extension ? `.${extension}` : ''}`
+  const { data, error } = await supabase.storage
+    .from(IMAGE_BUCKET)
+    .upload(path, file, { contentType: file.type || undefined, upsert: false })
+  throwIfError(error)
 
-  products.splice(index, 1)
-  return true
+  const { data: publicUrlData } = supabase.storage
+    .from(IMAGE_BUCKET)
+    .getPublicUrl(data.path)
+  return publicUrlData.publicUrl
 }
